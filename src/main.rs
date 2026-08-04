@@ -1,17 +1,35 @@
-use scryer_prolog::{LeafAnswer, MachineBuilder};
+mod query_countries;
+
+use scryer_prolog::{LeafAnswer, MachineBuilder, QueryState};
 use scryer_prolog::Term::{String, Atom};
 use std::fs;
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    query_countries::query_countries().await?;
+
+    Ok(())
+}
+
+#[allow(dead_code)]
+fn test_prolog() {
     let mut machine = MachineBuilder::new().build();
 
-    let rules = fs::read_to_string("swiss.pl")
+    let rules = fs::read_to_string("rules.pl")
         .expect("error");
 
     machine.consult_module_string("rules", rules);
 
-    let query = machine.run_query("rodada(X, 4.5, 7).");
+    let query = machine.run_query("assertz(country(angola)).");
+    query_result(query);
 
+    println!("");
+    let query = machine.run_query("country(X).");
+    query_result(query);
+}
+
+#[allow(dead_code)]
+fn query_result(query: QueryState<'_>) {
     query.for_each(|answer| {
         match answer {
             Ok(LeafAnswer::LeafAnswer{ bindings, .. }) => {
@@ -31,19 +49,19 @@ fn main() {
             }
 
             Ok(LeafAnswer::True) => {
-                println!("verdadeiro");
+                println!("true");
             }
 
             Ok(LeafAnswer::False) => {
-                println!("fim das soluções");
+                println!("false");
             }
 
             Ok(LeafAnswer::Exception(e)) => {
-                println!("erro Prolog: {:?}", e);
+                println!("{:?}", e);
             }
 
             Err(e) => {
-                println!("erro Rust: {:?}", e);
+                println!("error: {:?}", e);
             }
         }
     });
