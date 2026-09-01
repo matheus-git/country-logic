@@ -6,7 +6,11 @@ use std::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    query_countries::query_countries().await?;
+    let countries = query_countries::query_countries().await?;
+
+    for country in countries {
+        println!("{:?}", country);
+    }
 
     Ok(())
 }
