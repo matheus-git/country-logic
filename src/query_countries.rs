@@ -8,7 +8,7 @@ struct Response {
 
 #[derive(Debug, Deserialize)]
 struct Data {
-    objects: Vec<Country>,
+    objects: Vec<ApiCountry>,
     meta: Meta,
 }
 
@@ -21,7 +21,7 @@ struct Meta {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Country {
+struct ApiCountry {
     names: Names,
     population: u64,
     region: String,
@@ -30,6 +30,23 @@ pub struct Country {
 #[derive(Debug, Deserialize)]
 struct Names {
     common: String,
+}
+
+#[derive(Debug)]
+pub struct Country {
+    pub name: String,
+    pub population: u64,
+    pub region: String,
+}
+
+impl From<ApiCountry> for Country {
+    fn from(country: ApiCountry) -> Self {
+        Self {
+            name: country.names.common,
+            population: country.population,
+            region: country.region,
+        }
+    }
 }
 
 pub async fn query_countries() -> Result<Vec<Country>, reqwest::Error> {
@@ -54,7 +71,13 @@ pub async fn query_countries() -> Result<Vec<Country>, reqwest::Error> {
 
         let more = response.data.meta.more;
 
-        countries.extend(response.data.objects);
+        countries.extend(
+            response
+                .data
+                .objects
+                .into_iter()
+                .map(Country::from)
+        );
 
         if !more {
             break;
