@@ -1,2 +1,4 @@
 /target
-*.pl
+.env
+.env.*
+!.env.example

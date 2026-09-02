@@ -1,90 +1,95 @@
 use reqwest::Client;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+const API_URL: &str = "https://api.restcountries.com/countries/v5";
+const RESPONSE_FIELDS: &str = "names.common,codes.alpha_3,population,region,borders";
+
+#[derive(Deserialize)]
 struct Response {
     data: Data,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct Data {
     objects: Vec<ApiCountry>,
     meta: Meta,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct Meta {
-    count: u32,
-    limit: u32,
-    offset: u32,
+    #[serde(default)]
     more: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct ApiCountry {
     names: Names,
+    codes: Codes,
     population: u64,
     region: String,
+    #[serde(default)]
+    borders: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct Names {
     common: String,
+}
+
+#[derive(Deserialize)]
+struct Codes {
+    alpha_3: String,
 }
 
 #[derive(Debug)]
 pub struct Country {
     pub name: String,
+    pub alpha3: String,
     pub population: u64,
     pub region: String,
+    pub borders: Vec<String>,
 }
 
 impl From<ApiCountry> for Country {
     fn from(country: ApiCountry) -> Self {
         Self {
             name: country.names.common,
+            alpha3: country.codes.alpha_3,
             population: country.population,
             region: country.region,
+            borders: country.borders,
         }
     }
 }
 
-pub async fn query_countries() -> Result<Vec<Country>, reqwest::Error> {
+pub async fn fetch_countries() -> Result<Vec<Country>, Box<dyn std::error::Error>> {
+    let api_key = std::env::var("RESTCOUNTRIES_API_KEY").map_err(
+        |_| "RESTCOUNTRIES_API_KEY is not set; define it in the environment or a local .env file",
+    )?;
     let client = Client::new();
-
-    let limit = 100;
-    let mut offset = 0;
     let mut countries = Vec::new();
+    let mut offset = 0;
 
     loop {
-        let url = format!(
-            "https://api.restcountries.com/countries/v5?limit={limit}&offset={offset}"
-        );
-
         let response: Response = client
-            .get(url)
-            .header("Authorization", "Bearer rc_live_c210b00fcc674d4f93f20cd23dc28e38")
+            .get(API_URL)
+            .bearer_auth(&api_key)
+            .query(&[
+                ("limit", "100".to_owned()),
+                ("offset", offset.to_string()),
+                ("response_fields", RESPONSE_FIELDS.to_owned()),
+            ])
             .send()
             .await?
+            .error_for_status()?
             .json()
             .await?;
-
         let more = response.data.meta.more;
-
-        countries.extend(
-            response
-                .data
-                .objects
-                .into_iter()
-                .map(Country::from)
-        );
-
-        if !more {
-            break;
+        let page_size = response.data.objects.len();
+        countries.extend(response.data.objects.into_iter().map(Country::from));
+        if !more || page_size == 0 {
+            return Ok(countries);
         }
-
-        offset += limit;
+        offset += 100;
     }
-
-    Ok(countries)
 }
