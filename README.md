@@ -1,5 +1,7 @@
 # Country Logic
 
+![Country Logic architecture — REST API, Rust CLI, Prolog rules, and results](assets/country-logic-banner-v3.png)
+
 Country Logic is a small command-line application for exploring country data
 with Rust and Prolog. It fetches names, regions, populations, ISO codes, and
 land borders from the REST Countries API, converts that data into Prolog facts,
