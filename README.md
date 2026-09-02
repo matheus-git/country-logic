@@ -12,7 +12,7 @@ handle country relationships and population queries.
 ## Requirements
 
 - Rust with Cargo
-- A REST Countries API key
+- A REST Countries API key: https://restcountries.com/
 
 ## Setup
 
